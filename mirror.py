@@ -63,8 +63,8 @@ def mirror(x, y, z):
 
 def Bfield_interpolator(x, y, xmin, xmax, ymin, ymax, dx, dy, Bx_grid, By_grid, Bz_grid):
 
-    i = int(np.absolute(np.floor((x-xmin)/dx)))
-    j = int(np.absolute(np.floor((y-ymin)/dy)))
+    i = int(np.abs(np.floor((x-xmin)/dx)))
+    j = int(np.abs(np.floor((y-ymin)/dy)))
    
     xi = xmin + i * dx
     yj = ymin + j * dy
@@ -82,6 +82,20 @@ def Bfield_interpolator(x, y, xmin, xmax, ymin, ymax, dx, dy, Bx_grid, By_grid, 
     w1 = A1/At
     w2 = A2/At
     w3 = A3/At
+
+    # if xi == xmax:
+    #     if yj != ymax:
+    #         Bx = w0*Bx_grid[i,j] + w3*Bx_grid[i,j+1]
+    #         By = w0*By_grid[i,j] + w3*By_grid[i,j+1]
+    #         Bz = w0*Bz_grid[i,j] + w3*Bz_grid[i,j+1]
+    # else:
+    #     Bx = w0*Bx_grid[i,j] + w1*Bx_grid[i+1,j]
+    #     By = w0*By_grid[i,j] + w1*By_grid[i+1,j]
+    #     Bz = w0*Bz_grid[i,j] + w1*Bz_grid[i+1,j]
+    #     if yj != ymax:
+    #         Bx = w0*Bx_grid[i,j] + w2*Bx_grid[i+1][j+1] + w3 * Bx_grid[i][j+1]
+    #         By = w0*By_grid[i,j] + w2*By_grid[i+1][j+1] + w3 * By_grid[i][j+1]
+    #         Bz = w0*Bz_grid[i,j] + w2*By_grid[i+1][j+1] + w3 * By_grid[i][j+1]
 
     if xi == xmax:
         if yj == ymax:

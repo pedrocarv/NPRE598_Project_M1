@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import boris
 import mirror
 from scipy.stats import maxwell
-from tqdm import tqdm
+import maxwell
 
 k = 1.380649e-23 # J/K
 T = 298.15 # K
@@ -46,13 +46,15 @@ def main():
     theta = np.arcsin(np.sqrt(Bmin/Bmax))
 
     # Initial conditions
+    v = np.arange(0, 1500)
+    speeds, vx, vy, vz = maxwell.get_vel(maxwell.CDF(v,m,T), v, 100000)
 
     X0 = 0.0
     Y0 = 0.0
     Z0 = 0.0
-    Vx0 = 0.0
-    Vz0 = 5.0
-    Vy0 = 5.0
+    Vx0 = vx[0]
+    Vy0 = vy[0]
+    Vz0 = vz[0]
 
     x0 = np.array([X0, Y0, Z0, Vx0, Vy0, Vz0])
 
