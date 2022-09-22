@@ -12,7 +12,8 @@ def frequency_correction(x):
         alpha = np.tan(x)/x
     return alpha
 
-def boris_bunemann(time, x0, params,Ymin, Ymax, Zmin, Zmax, dY, dZ, Bx_grid, By_grid, Bz_grid, correction=False):
+#def boris_bunemann(time, x0, params,Ymin, Ymax, Zmin, Zmax, dY, dZ, Bx_grid, By_grid, Bz_grid, correction=False):
+def boris_bunemann(time, x0, params, correction=False):
 
     dt = params[0]
     qmdt2 = params[1]
@@ -34,9 +35,9 @@ def boris_bunemann(time, x0, params,Ymin, Ymax, Zmin, Zmax, dY, dZ, Bx_grid, By_
 
         Ex, Ey, Ez = [0,0,0]
 
-        Bx, By, Bz = mirror.Bfield_interpolator(y, z, Ymin, Ymax, Zmin, Zmax, dY, dZ, Bx_grid, By_grid, Bz_grid)
+        #Bx, By, Bz = mirror.Bfield_interpolator(y, z, Ymin, Ymax, Zmin, Zmax, dY, dZ, Bx_grid, By_grid, Bz_grid)
 
-        #Bx, By, Bz = mirror.mirror_rz(x, y, z)
+        Bx, By, Bz = mirror.mirror(x, y, z)
 
         if correction:
             if n == 0:

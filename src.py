@@ -1,14 +1,13 @@
-from zoneinfo import ZoneInfo
 import numpy as np
 import matplotlib.pyplot as plt
 import boris
 import mirror
-from scipy.stats import maxwell
 import maxwell
 
-k = 1.380649e-23 # J/K
-T = 298.15 # K
-m = 9.10938356e-31 # kg
+kB = 1.38e-23
+amu = 1.66e-27
+m = 85*amu
+T = 298.15
 qe = 1.60217662e-19 # eV
 Q = -qe
 
@@ -46,27 +45,37 @@ def main():
     theta = np.arcsin(np.sqrt(Bmin/Bmax))
 
     # Initial conditions
-    v = np.arange(0, 1500)
-    speeds, vx, vy, vz = maxwell.get_vel(maxwell.CDF(v,m,T), v, 100000)
+    v = np.arange(0, 2)
+    cdf = maxwell.CDF(v,m,T)
+    nparticles = 10
+    speeds, vx, vy, vz = maxwell.get_vel(nparticles)
 
     X0 = 0.0
     Y0 = 0.0
     Z0 = 0.0
-    Vx0 = vx[0]
-    Vy0 = vy[0]
-    Vz0 = vz[0]
-
-    x0 = np.array([X0, Y0, Z0, Vx0, Vy0, Vz0])
 
     Nperiods = 10
     Nsteps_per_period = 100
-    time = np.linspace(0.0, 2.0, Nperiods*Nsteps_per_period)
+    time = np.linspace(0.0, 1.0, Nperiods*Nsteps_per_period)
     dt = time[1] - time[0]
     params = np.array([dt, Q/m*dt/2])
 
-    Traj = boris.boris_bunemann(time, x0, params, Ymin, Ymax, Zmin, Zmax, dY, dZ, Bx_grid, By_grid, Bz_grid, correction=True)
+    particleTraj = np.zeros((nparticles, 6, time.size))
 
-    # Traj = boris.boris_bunemann(time, x0, params, correction=True)
+    for i in range(nparticles):
+        Vx0 = vx[i]
+        Vy0 = vy[i]   
+        Vz0 = vz[i]
+        x0 = np.array([X0, Y0, Z0, Vx0, Vy0, Vz0])
+        #Traj = boris.boris_bunemann(time, x0, params, Ymin, Ymax, Zmin, Zmax, dY, dZ, Bx_grid, By_grid, Bz_grid, correction=True)
+        Traj = boris.boris_bunemann(time, x0, params, correction=True)
+        for t in range(time.size):
+            particleTraj[i, 0, t] = Traj[t,0] 
+            particleTraj[i, 1, t] = Traj[t,1]
+            particleTraj[i, 2, t] = Traj[t,2]
+            particleTraj[i, 3, t] = Traj[t,3]
+            particleTraj[i, 4, t] = Traj[t,4]
+            particleTraj[i, 5, t] = Traj[t,5]
 
     # plt.figure(1, figsize=(9,9))
     # ax = plt.subplot(211)
@@ -102,13 +111,15 @@ def main():
     # #plt.title('B-field magnitude [T] - Simple Magnetic Mirror')
     
 
-    plt.subplots(figsize=(6, 6))
-    plt.plot(Traj[:,2], Traj[:,1], 'r-')
+    plt.subplots()
+    plt.plot(particleTraj[0,2,:], particleTraj[0,1,:], 'r-')
+    plt.plot(particleTraj[1,2,:], particleTraj[1,1,:], 'b-')
+    plt.plot(particleTraj[2,2,:], particleTraj[2,1,:], 'g-')
     plt.xlabel('Z [m]')
     plt.ylabel('Y [m]')
     plt.xlim(-1,1)
     plt.ylim(-1,1)
-    plt.title('Single particle test')
+    plt.title('Multiple particle test')
     plt.show()
 
 if __name__ == '__main__':
