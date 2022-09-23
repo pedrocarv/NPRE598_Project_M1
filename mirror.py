@@ -12,24 +12,21 @@ def mirror(x, y, z):
     Bx, By, Bz --> cartesian components of the magnetic field
     
     '''
-    Br, Bz = [0,0]
+    Br, Bz = [0.0, 0.0]
 
-    Loops = np.array([[0.25, 5000, 5], 
-                      [0.25, 5000, 5]]) # [Ra, I0, Nturns] of the loops\
+    Loops = np.array([[0.25, 5000., 5], 
+                      [0.25, 5000., 5]]) # [Ra, I0, Nturns] of the loops\
 
-    Center = np.array([[0, 0, -0.5], [0,0,0.5]])
+    Center = np.array([[0.0, 0.0, -0.5], [0.0, 0.0, 0.5]])
 
     for l in range(2):
         Ra     = Loops[l][0]
         I0     = Loops[l][1]
         Nturns = Loops[l][2]
-        x1 = x #- Center[l][0]
-        y1 = y #- Center[l][1]
         z1 = z - Center[l][2]
-       
-        r1 = np.sqrt(x1*x1 + y1*y1)
+        r = np.sqrt(x*x + y*y)
         phi = np.arctan2(y,x)
-        Br_temp, Bz_temp = bfield.loopbrz(Ra, I0, Nturns, r1, z1)
+        Br_temp, Bz_temp = bfield.loopbrz(Ra, I0, Nturns, r, z1)
         Br += Br_temp
         Bz += Bz_temp
 
@@ -39,7 +36,6 @@ def mirror(x, y, z):
 
     return Bx, By, Bz
 
-
 def Bfield_interpolator(x, y, xmin, xmax, ymin, ymax, dx, dy, Bx_grid, By_grid, Bz_grid):
 
     i = int(np.abs(np.floor((x-xmin)/dx)))
@@ -47,9 +43,6 @@ def Bfield_interpolator(x, y, xmin, xmax, ymin, ymax, dx, dy, Bx_grid, By_grid, 
    
     xi = xmin + i * dx
     yj = ymin + j * dy
-
-    # print('xi =', xi, 'yj =', yj)
-    # print('i =', i, 'j =', j)
 
     A0 = (xi + dx - x)*(yj + dy - y)
     A1 = (x - xi)*(yj + dy - y)
@@ -63,40 +56,26 @@ def Bfield_interpolator(x, y, xmin, xmax, ymin, ymax, dx, dy, Bx_grid, By_grid, 
     w3 = A3/At
 
     if xi == xmax:
-        if yj != ymax:
-            Bx = w0*Bx_grid[i,j] + w3*Bx_grid[i,j+1]
-            By = w0*By_grid[i,j] + w3*By_grid[i,j+1]
-            Bz = w0*Bz_grid[i,j] + w3*Bz_grid[i,j+1]
-    else:
-        Bx = w0*Bx_grid[i,j] + w1*Bx_grid[i+1,j]
-        By = w0*By_grid[i,j] + w1*By_grid[i+1,j]
-        Bz = w0*Bz_grid[i,j] + w1*Bz_grid[i+1,j]
-        if yj != ymax:
-            Bx = w0*Bx_grid[i,j] + w2*Bx_grid[i+1][j+1] + w3 * Bx_grid[i][j+1]
-            By = w0*By_grid[i,j] + w2*By_grid[i+1][j+1] + w3 * By_grid[i][j+1]
-            Bz = w0*Bz_grid[i,j] + w2*By_grid[i+1][j+1] + w3 * By_grid[i][j+1]
+        if yj == ymax:
+            Bx = w0*Bx_grid[i,j] + w1*Bx_grid[i,j] + w2*Bx_grid[i,j] + w3*Bx_grid[i,j]
+            By = w0*By_grid[i,j] + w1*By_grid[i,j] + w2*By_grid[i,j] + w3*By_grid[i,j]
+            Bz = w0*Bz_grid[i,j] + w1*Bz_grid[i,j] + w2*Bz_grid[i,j] + w3*Bz_grid[i,j]
+        elif yj < ymax:
+            Bx = w0*Bx_grid[i,j] + w1*Bx_grid[i,j] + w2*Bx_grid[i,j+1] + w3*Bx_grid[i,j+1]
+            By = w0*By_grid[i,j] + w1*By_grid[i,j] + w2*By_grid[i,j+1] + w3*By_grid[i,j+1]
+            Bz = w0*Bz_grid[i,j] + w1*Bz_grid[i,j] + w2*Bz_grid[i,j+1] + w3*Bz_grid[i,j+1]
+    elif yj == ymax and xi < xmax:
+            Bx = w0*Bx_grid[i,j] + w1*Bx_grid[i+1,j] + w2*Bx_grid[i+1,j] + w3*Bx_grid[i,j]
+            By = w0*By_grid[i,j] + w1*By_grid[i+1,j] + w2*By_grid[i+1,j] + w3*By_grid[i,j]
+            Bz = w0*Bz_grid[i,j] + w1*Bz_grid[i+1,j] + w2*Bz_grid[i+1,j] + w3*Bz_grid[i,j]
+    elif xi > xmax:
+            Bx = w0*Bx_grid[i,j] + w1*Bx_grid[i-1,j] + w2*Bx_grid[i-1,j] + w3*Bx_grid[i,j]
+            By = w0*By_grid[i,j] + w1*By_grid[i-1,j] + w2*By_grid[i-1,j] + w3*By_grid[i,j]
+            Bz = w0*Bz_grid[i,j] + w1*Bz_grid[i-1,j] + w2*Bz_grid[i-1,j] + w3*Bz_grid[i,j]
 
-    # if xi == xmax:
-    #     if yj == ymax:
-    #         Bx = w0*Bx_grid[i,j] + w1*Bx_grid[i,j] + w2*Bx_grid[i,j] + w3*Bx_grid[i,j]
-    #         By = w0*By_grid[i,j] + w1*By_grid[i,j] + w2*By_grid[i,j] + w3*By_grid[i,j]
-    #         Bz = w0*Bz_grid[i,j] + w1*Bz_grid[i,j] + w2*Bz_grid[i,j] + w3*Bz_grid[i,j]
-    #     elif yj < ymax:
-    #         Bx = w0*Bx_grid[i,j] + w1*Bx_grid[i,j] + w2*Bx_grid[i,j+1] + w3*Bx_grid[i,j+1]
-    #         By = w0*By_grid[i,j] + w1*By_grid[i,j] + w2*By_grid[i,j+1] + w3*By_grid[i,j+1]
-    #         Bz = w0*Bz_grid[i,j] + w1*Bz_grid[i,j] + w2*Bz_grid[i,j+1] + w3*Bz_grid[i,j+1]
-    # elif yj == ymax and xi < xmax:
-    #         Bx = w0*Bx_grid[i,j] + w1*Bx_grid[i+1,j] + w2*Bx_grid[i+1,j] + w3*Bx_grid[i,j]
-    #         By = w0*By_grid[i,j] + w1*By_grid[i+1,j] + w2*By_grid[i+1,j] + w3*By_grid[i,j]
-    #         Bz = w0*Bz_grid[i,j] + w1*Bz_grid[i+1,j] + w2*Bz_grid[i+1,j] + w3*Bz_grid[i,j]
-    # elif xi > xmax:
-    #         Bx = w0*Bx_grid[i,j] + w1*Bx_grid[i-1,j] + w2*Bx_grid[i-1,j] + w3*Bx_grid[i,j]
-    #         By = w0*By_grid[i,j] + w1*By_grid[i-1,j] + w2*By_grid[i-1,j] + w3*By_grid[i,j]
-    #         Bz = w0*Bz_grid[i,j] + w1*Bz_grid[i-1,j] + w2*Bz_grid[i-1,j] + w3*Bz_grid[i,j]
-
-    # if xi < xmax and yj < ymax:
-    #     Bx = w0*Bx_grid[i,j] + w1*Bx_grid[i+1,j] + w2*Bx_grid[i+1,j+1] + w3*Bx_grid[i,j+1]
-    #     By = w0*By_grid[i,j] + w1*By_grid[i+1,j] + w2*By_grid[i+1,j+1] + w3*By_grid[i,j+1]
-    #     Bz = w0*Bz_grid[i,j] + w1*Bz_grid[i+1,j] + w2*Bz_grid[i+1,j+1] + w3*Bz_grid[i,j+1]
+    if xi < xmax and yj < ymax:
+        Bx = w0*Bx_grid[i,j] + w1*Bx_grid[i+1,j] + w2*Bx_grid[i+1,j+1] + w3*Bx_grid[i,j+1]
+        By = w0*By_grid[i,j] + w1*By_grid[i+1,j] + w2*By_grid[i+1,j+1] + w3*By_grid[i,j+1]
+        Bz = w0*Bz_grid[i,j] + w1*Bz_grid[i+1,j] + w2*Bz_grid[i+1,j+1] + w3*Bz_grid[i,j+1]
     
     return Bx, By, Bz

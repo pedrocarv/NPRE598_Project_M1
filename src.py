@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import boris
 import mirror
 import maxwell
+from scipy.special import erf
 
 kB = 1.38e-23
 amu = 1.66e-27
@@ -13,9 +14,9 @@ Q = -qe
 
 def main():
     # R, Z grid
-    X = np.linspace( -1, 1, 20 )
-    Y = np.linspace( -1, 1, 20 )
-    Z = np.linspace( -1, 1, 20 )
+    X = np.linspace( -1, 1, 51 )
+    Y = np.linspace( -1, 1, 51 )
+    Z = np.linspace( -1, 1, 51 )
 
     # Cell size
     dY = Y[1] - Y[0]
@@ -39,36 +40,41 @@ def main():
                 Bz_grid[j,k] = Bz
                 Bnorm[j,k]   = np.sqrt( Bx*Bx + By*By + Bz*Bz )
 
-    Bmin = np.min(Bnorm)
-    Bmax = np.max(Bnorm)
-
-    theta = np.arcsin(np.sqrt(Bmin/Bmax))
-
     # Initial conditions
-    v = np.arange(0, 2)
-    cdf = maxwell.CDF(v,m,T)
-    nparticles = 10
+    nparticles = 30
     speeds, vx, vy, vz = maxwell.get_vel(nparticles)
 
-    X0 = 0.0
-    Y0 = 0.0
+    # Randomizing the initial positions along the Y-Z mid plane
+    r_rand = np.ones(nparticles)*0.5
+    p_rand = np.random.rand(nparticles)*2*np.pi
+    X0 = np.empty(nparticles)
+    Y0 = np.empty(nparticles)
     Z0 = 0.0
 
-    Nperiods = 10
+    for i in range(p_rand.size):
+        X0[i] = r_rand[i]*np.cos(p_rand[i])
+        Y0[i] = r_rand[i]*np.sin(p_rand[i])
+
+    Nperiods = 100
     Nsteps_per_period = 100
-    time = np.linspace(0.0, 1.0, Nperiods*Nsteps_per_period)
+    # Cyclotron frequency [rad/s]
+    omega_c = np.abs(Q)*np.max(Bnorm)/m
+    # Cyclotron period
+    Tc = 2.0*np.pi/omega_c
+
+    time = np.linspace(0.0, Tc*Nperiods, Nperiods*Nsteps_per_period)
     dt = time[1] - time[0]
     params = np.array([dt, Q/m*dt/2])
 
-    particleTraj = np.zeros((nparticles, 6, time.size))
+    particleTraj = np.empty((nparticles, 6, time.size))
+    particleTraj.fill(np.nan)
+
+    temp = np.linspace(0, nparticles, nparticles)
 
     for i in range(nparticles):
-        Vx0 = vx[i]
-        Vy0 = vy[i]   
-        Vz0 = vz[i]
-        x0 = np.array([X0, Y0, Z0, Vx0, Vy0, Vz0])
-        #Traj = boris.boris_bunemann(time, x0, params, Ymin, Ymax, Zmin, Zmax, dY, dZ, Bx_grid, By_grid, Bz_grid, correction=True)
-        Traj = boris.boris_bunemann(time, x0, params, correction=True)
+        x0 = np.array([X0[i], Y0[i], Z0, vx[i], vy[i], vz[i]])
+        Traj = boris.boris_bunemann(time, x0, params, Ymin, Ymax, Zmin, Zmax, dY, dZ, Bx_grid, By_grid, Bz_grid, correction=True)
+        #Traj = boris.boris_bunemann(time, x0, params, correction=True)
         for t in range(time.size):
             particleTraj[i, 0, t] = Traj[t,0] 
             particleTraj[i, 1, t] = Traj[t,1]
@@ -109,17 +115,37 @@ def main():
     # plt.xlabel('Y [m]')
     # plt.ylabel('Z [m]')
     # #plt.title('B-field magnitude [T] - Simple Magnetic Mirror')
-    
 
-    plt.subplots()
-    plt.plot(particleTraj[0,2,:], particleTraj[0,1,:], 'r-')
-    plt.plot(particleTraj[1,2,:], particleTraj[1,1,:], 'b-')
-    plt.plot(particleTraj[2,2,:], particleTraj[2,1,:], 'g-')
-    plt.xlabel('Z [m]')
-    plt.ylabel('Y [m]')
+    # plt.figure(1)
+    # plt.plot(temp, particleTraj[:,3,0], 'g-')
+    # plt.plot(temp, particleTraj[:,4,0], 'r-')
+    # plt.plot(temp, particleTraj[:,5,0], 'b-')
+    # plt.xlabel('Number of particles')
+    # plt.ylabel('Initial velocity')
+    # plt.title('Multiple particle test')
+    # plt.show()
+
+    fig = plt.figure(1)
+    ax = fig.add_subplot(111)
+    plt.plot(np.transpose(particleTraj[:,2,:]), np.transpose(particleTraj[:,1,:]) )
+    #ax.add_artist(Circle((0,0), 1, color='b'))
+    plt.xlabel('$z$')
+    plt.ylabel('$y$')
+    plt.title('Trajectory projection on $YZ$-plane')
     plt.xlim(-1,1)
     plt.ylim(-1,1)
-    plt.title('Multiple particle test')
+    plt.legend(loc=3)
+    #plt.savefig('boris_XZ.png')
+
+    # plt.figure(2)
+    # plt.plot(particleTraj[0,2,:], particleTraj[0,1,:], 'r-')
+    # plt.plot(particleTraj[1,2,:], particleTraj[1,1,:], 'b-')
+    # plt.plot(particleTraj[2,2,:], particleTraj[2,1,:], 'g-')
+    # plt.xlabel('Z [m]')
+    # plt.ylabel('Y [m]')
+    # plt.xlim(-1,1)
+    # plt.ylim(-1,1)
+    # plt.title('Multiple particle test')
     plt.show()
 
 if __name__ == '__main__':

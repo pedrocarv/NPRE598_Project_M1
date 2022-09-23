@@ -7,10 +7,10 @@ from scipy.stats import maxwell
 
 def get_vel(n):
     '''
-    This function uses scipy interpolation to transform the CDF into a function that can be called to generate the 3D velocity components
+    This function uses inverse transform sampling to get the 3D velocity components
     '''
     k = 1.380649e-23
-    T = 400
+    T = 500
     amu = 1.66e-27
     m = 85*amu
     uniform_rand = np.random.uniform()

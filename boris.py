@@ -7,13 +7,14 @@ me = 9.10938356e-31
 
 def frequency_correction(x):
     if x == 0: # To avoid division by zero and taking into account that tan(x) -> 1 as x -> 0
-        alpha = 1
+        alpha = 1.0
     else:
         alpha = np.tan(x)/x
     return alpha
 
-#def boris_bunemann(time, x0, params,Ymin, Ymax, Zmin, Zmax, dY, dZ, Bx_grid, By_grid, Bz_grid, correction=False):
-def boris_bunemann(time, x0, params, correction=False):
+def boris_bunemann(time, x0, params,Ymin, Ymax, Zmin, Zmax, dY, dZ, Bx_grid, By_grid, Bz_grid, correction=False):
+#def boris_bunemann(time, x0, params, Y, Z, Bx_grid, By_grid, Bz_grid, correction=False):
+#def boris_bunemann(time, x0, params, correction=False):
 
     dt = params[0]
     qmdt2 = params[1]
@@ -28,16 +29,15 @@ def boris_bunemann(time, x0, params, correction=False):
     vy = X[0,4]
     vz = X[0,5]
 
-    if x > 1 or y > 1:
-        return X
-
     for n in range(0, N): 
 
-        Ex, Ey, Ez = [0,0,0]
+        Ex, Ey, Ez = [0.0, 0.0, 0.0]
 
-        #Bx, By, Bz = mirror.Bfield_interpolator(y, z, Ymin, Ymax, Zmin, Zmax, dY, dZ, Bx_grid, By_grid, Bz_grid)
+        Bx, By, Bz = mirror.Bfield_interpolator(y, z, Ymin, Ymax, Zmin, Zmax, dY, dZ, Bx_grid, By_grid, Bz_grid)
 
-        Bx, By, Bz = mirror.mirror(x, y, z)
+        #Bx, By, Bz = mirror.interp2D(Y,Z,Bx_grid,By_grid,Bz_grid,y,z)
+
+        #Bx, By, Bz = mirror.mirror(x, y, z)
 
         if correction:
             if n == 0:
@@ -100,6 +100,9 @@ def boris_bunemann(time, x0, params, correction=False):
         X[n,3] = vx
         X[n,4] = vy
         X[n,5] = vz
+
+        if abs(z) > 1.0 or abs(y) > 1.0:
+            return X
 
     return X
     
