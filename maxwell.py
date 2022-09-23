@@ -1,19 +1,13 @@
 import numpy as np
 from scipy.stats import maxwell
 
-# To generate random velocity components that obey a maxwellian distribution, we need the cumulative distribution function (CDF), which can be found from the PDF:
-#                                                        C_v(v) = \int_{-\inf}^{v} f_v(v') \; {\rm d}v'
-# Then, to get the velocity components, we need to invert the CDF. We'll do it numerically using an interpolation function.
-
-def get_vel(n):
+def get_vel(n, T):
     '''
     This function uses inverse transform sampling to get the 3D velocity components
     '''
     k = 1.380649e-23
-    T = 500
-    amu = 1.66e-27
-    m = 85*amu
-    uniform_rand = np.random.uniform()
+    m = 1.66e-27
+    uniform_rand = np.random.rand(n)
 
     speeds = maxwell.ppf(uniform_rand, scale=np.sqrt(k*T/m))
 

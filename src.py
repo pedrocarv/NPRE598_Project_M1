@@ -1,16 +1,17 @@
+import warnings
+warnings.filterwarnings("ignore")
 import numpy as np
 import matplotlib.pyplot as plt
 import boris
 import mirror
 import maxwell
-from scipy.special import erf
+import losscone
 
 kB = 1.38e-23
-amu = 1.66e-27
-m = 85*amu
-T = 298.15
+m = 1.66e-27
+T = 5000
 qe = 1.60217662e-19 # eV
-Q = -qe
+Q = qe
 
 def main():
     # R, Z grid
@@ -40,9 +41,12 @@ def main():
                 Bz_grid[j,k] = Bz
                 Bnorm[j,k]   = np.sqrt( Bx*Bx + By*By + Bz*Bz )
 
+    Bmax = np.max(Bnorm)
+    Bmin = np.min(Bnorm)
+    
     # Initial conditions
-    nparticles = 30
-    speeds, vx, vy, vz = maxwell.get_vel(nparticles)
+    nparticles = 100
+    speeds, vx, vy, vz = maxwell.get_vel(nparticles, T)
 
     # Randomizing the initial positions along the Y-Z mid plane
     r_rand = np.ones(nparticles)*0.5
@@ -58,7 +62,7 @@ def main():
     Nperiods = 100
     Nsteps_per_period = 100
     # Cyclotron frequency [rad/s]
-    omega_c = np.abs(Q)*np.max(Bnorm)/m
+    omega_c = np.abs(Q)*Bnorm[25, 25]/m
     # Cyclotron period
     Tc = 2.0*np.pi/omega_c
 
@@ -71,10 +75,14 @@ def main():
 
     temp = np.linspace(0, nparticles, nparticles)
 
+    trapped_particles = 0
+    #angles = np.empty((nparticles, time.size))
+
     for i in range(nparticles):
         x0 = np.array([X0[i], Y0[i], Z0, vx[i], vy[i], vz[i]])
-        Traj = boris.boris_bunemann(time, x0, params, Ymin, Ymax, Zmin, Zmax, dY, dZ, Bx_grid, By_grid, Bz_grid, correction=True)
-        #Traj = boris.boris_bunemann(time, x0, params, correction=True)
+        #isTrapped = losscone.trapping(Bmax, Bmin, vx[i], vy[i], vz[i])
+        Traj, isTrapped = boris.boris_bunemann(time, x0, params, Ymin, Ymax, Zmin, Zmax, dY, dZ, Bx_grid, By_grid, Bz_grid, correction=True)
+        trapped_particles += isTrapped
         for t in range(time.size):
             particleTraj[i, 0, t] = Traj[t,0] 
             particleTraj[i, 1, t] = Traj[t,1]
@@ -83,6 +91,7 @@ def main():
             particleTraj[i, 4, t] = Traj[t,4]
             particleTraj[i, 5, t] = Traj[t,5]
 
+    print(trapped_particles, "particles are trapped")
     # plt.figure(1, figsize=(9,9))
     # ax = plt.subplot(211)
     # XX,YY = np.meshgrid(X,Y)
@@ -93,12 +102,13 @@ def main():
     # plt.title('B-field magnitude [T] - Simple Magnetic Mirror')
 
     # plt.figure(1)
-    # ax = plt.subplot(312)
-    # XX,YY = np.meshgrid(X,Y)
-    # plt.streamplot(XX, YY, Bx_grid[:,:,10], By_grid[:,:,10])
+    # #x = plt.subplot(312)
+    # XX,YY = np.meshgrid(Z,Y)
+    # plt.streamplot(XX, YY, Bz_grid[:,:], By_grid[:,:])
     # plt.xlabel('X [m]')
     # plt.ylabel('Y [m]')
-    # #plt.title('B-field components - Simple Magnetic Mirror')
+    # plt.show()
+    # plt.title('B-field components - Simple Magnetic Mirror')
 
     # plt.figure(1)
     # ax = plt.subplot(212)
@@ -107,7 +117,6 @@ def main():
     # plt.colorbar()
     # plt.xlabel('Z [m]')
     # plt.ylabel('Y [m]')
-
 
     # XX,YY = np.meshgrid(Y, Z)
     # plt.contourf(np.transpose(XX),np.transpose(YY),Bnorm,50)
@@ -125,16 +134,19 @@ def main():
     # plt.title('Multiple particle test')
     # plt.show()
 
-    fig = plt.figure(1)
-    ax = fig.add_subplot(111)
+    plt.figure(1)
+    #XX,YY = np.meshgrid(Z,Y)
+    #plt.streamplot(XX, YY, Bz_grid[:,:], By_grid[:,:])
     plt.plot(np.transpose(particleTraj[:,2,:]), np.transpose(particleTraj[:,1,:]) )
-    #ax.add_artist(Circle((0,0), 1, color='b'))
+    plt.axvline(x=-0.5, color='k', linewidth = 3)
+    plt.axvline(x=0.5, color='k', linewidth = 3)
+    plt.axhline(y=0.7, color='k', linewidth = 3)
+    plt.axhline(y=-0.7, color='k', linewidth = 3)
     plt.xlabel('$z$')
     plt.ylabel('$y$')
     plt.title('Trajectory projection on $YZ$-plane')
     plt.xlim(-1,1)
     plt.ylim(-1,1)
-    plt.legend(loc=3)
     #plt.savefig('boris_XZ.png')
 
     # plt.figure(2)

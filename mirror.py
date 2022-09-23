@@ -37,7 +37,9 @@ def mirror(x, y, z):
     return Bx, By, Bz
 
 def Bfield_interpolator(x, y, xmin, xmax, ymin, ymax, dx, dy, Bx_grid, By_grid, Bz_grid):
-
+    '''
+    This function does 2D linear interpolation of the B-field at any point
+    '''
     i = int(np.abs(np.floor((x-xmin)/dx)))
     j = int(np.abs(np.floor((y-ymin)/dy)))
    

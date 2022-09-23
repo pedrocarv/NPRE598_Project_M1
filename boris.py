@@ -12,15 +12,14 @@ def frequency_correction(x):
         alpha = np.tan(x)/x
     return alpha
 
-def boris_bunemann(time, x0, params,Ymin, Ymax, Zmin, Zmax, dY, dZ, Bx_grid, By_grid, Bz_grid, correction=False):
-#def boris_bunemann(time, x0, params, Y, Z, Bx_grid, By_grid, Bz_grid, correction=False):
-#def boris_bunemann(time, x0, params, correction=False):
+def boris_bunemann(time, x0, params, Ymin, Ymax, Zmin, Zmax, dY, dZ, Bx_grid, By_grid, Bz_grid, correction=False):
 
     dt = params[0]
     qmdt2 = params[1]
     N = np.size(time)
     M = np.size(x0)
-    X = np.zeros((N,M))
+    X = np.empty((N,M))
+    X.fill(np.nan)
     X[0,:] = x0
     x = X[0,0]
     y = X[0,1]
@@ -28,16 +27,13 @@ def boris_bunemann(time, x0, params,Ymin, Ymax, Zmin, Zmax, dY, dZ, Bx_grid, By_
     vx = X[0,3]
     vy = X[0,4]
     vz = X[0,5]
+    isTrapped = 1
 
     for n in range(0, N): 
 
         Ex, Ey, Ez = [0.0, 0.0, 0.0]
 
         Bx, By, Bz = mirror.Bfield_interpolator(y, z, Ymin, Ymax, Zmin, Zmax, dY, dZ, Bx_grid, By_grid, Bz_grid)
-
-        #Bx, By, Bz = mirror.interp2D(Y,Z,Bx_grid,By_grid,Bz_grid,y,z)
-
-        #Bx, By, Bz = mirror.mirror(x, y, z)
 
         if correction:
             if n == 0:
@@ -101,8 +97,11 @@ def boris_bunemann(time, x0, params,Ymin, Ymax, Zmin, Zmax, dY, dZ, Bx_grid, By_
         X[n,4] = vy
         X[n,5] = vz
 
-        if abs(z) > 1.0 or abs(y) > 1.0:
-            return X
+        if abs(z) > 0.5 or abs(y) > 0.7:
+            isTrapped = 0
 
-    return X
+        if abs(z) > 1.0 or abs(y) > 1.0: # This avoids tracking after the particle leaves the grid
+            return X, isTrapped
+
+    return X, isTrapped
     
