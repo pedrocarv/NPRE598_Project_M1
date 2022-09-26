@@ -81,3 +81,4 @@ def Bfield_interpolator(x, y, xmin, xmax, ymin, ymax, dx, dy, Bx_grid, By_grid, 
         Bz = w0*Bz_grid[i,j] + w1*Bz_grid[i+1,j] + w2*Bz_grid[i+1,j+1] + w3*Bz_grid[i,j+1]
     
     return Bx, By, Bz
+

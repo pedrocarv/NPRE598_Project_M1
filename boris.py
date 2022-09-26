@@ -27,12 +27,13 @@ def boris_bunemann(time, x0, params, Ymin, Ymax, Zmin, Zmax, dY, dZ, Bx_grid, By
     vx = X[0,3]
     vy = X[0,4]
     vz = X[0,5]
+    originalSign = 1
+
     isTrapped = 1
 
     for n in range(0, N): 
 
         Ex, Ey, Ez = [0.0, 0.0, 0.0]
-
         Bx, By, Bz = mirror.Bfield_interpolator(y, z, Ymin, Ymax, Zmin, Zmax, dY, dZ, Bx_grid, By_grid, Bz_grid)
 
         if correction:
@@ -91,17 +92,21 @@ def boris_bunemann(time, x0, params, Ymin, Ymax, Zmin, Zmax, dY, dZ, Bx_grid, By
             z += vz*dt
 
         X[n,0] = x
-        X[n,1] = y
+        X[n,1] = y 
         X[n,2] = z
         X[n,3] = vx
         X[n,4] = vy
         X[n,5] = vz
 
-        if abs(z) > 0.5 or abs(y) > 0.7:
+        if np.abs(z) > 0.5 or np.abs(y) > 0.7:
             isTrapped = 0
+        # if isTrapped == 0:
+        #     if np.sign(vz) == -originalSign:
+        #         isTrapped = 1
 
-        if abs(z) > 1.0 or abs(y) > 1.0: # This avoids tracking after the particle leaves the grid
+        if abs(z) > Zmax or abs(y) > Ymax: # This avoids tracking after the particle leaves the grid
             return X, isTrapped
 
     return X, isTrapped
+
     

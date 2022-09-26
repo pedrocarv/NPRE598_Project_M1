@@ -8,16 +8,16 @@ import maxwell
 import losscone
 
 kB = 1.38e-23
-m = 1.66e-27
-T = 5000
+m = 1.66e-27 # kg
+T = 5000 # K
 qe = 1.60217662e-19 # eV
 Q = qe
 
 def main():
     # R, Z grid
-    X = np.linspace( -1, 1, 51 )
-    Y = np.linspace( -1, 1, 51 )
-    Z = np.linspace( -1, 1, 51 )
+    X = np.linspace( -1, 1, 101 )
+    Y = np.linspace( -1, 1, 101 )
+    Z = np.linspace( -1, 1, 101 )
 
     # Cell size
     dY = Y[1] - Y[0]
@@ -27,6 +27,8 @@ def main():
     Ymax = Y[-1]
     Zmin = Z[0]
     Zmax = Z[-1]
+
+    # Calculating the Bfield on the grid points
 
     Bx_grid = np.zeros((Y.size, Z.size))
     By_grid = np.zeros((Y.size, Z.size))
@@ -40,16 +42,13 @@ def main():
                 By_grid[j,k] = By
                 Bz_grid[j,k] = Bz
                 Bnorm[j,k]   = np.sqrt( Bx*Bx + By*By + Bz*Bz )
-
-    Bmax = np.max(Bnorm)
-    Bmin = np.min(Bnorm)
     
-    # Initial conditions
-    nparticles = 100
+    # Initial conditions for the velocities
+    nparticles = 10000
     speeds, vx, vy, vz = maxwell.get_vel(nparticles, T)
 
     # Randomizing the initial positions along the Y-Z mid plane
-    r_rand = np.ones(nparticles)*0.5
+    r_rand = np.ones(nparticles)*0.3
     p_rand = np.random.rand(nparticles)*2*np.pi
     X0 = np.empty(nparticles)
     Y0 = np.empty(nparticles)
@@ -62,7 +61,7 @@ def main():
     Nperiods = 100
     Nsteps_per_period = 100
     # Cyclotron frequency [rad/s]
-    omega_c = np.abs(Q)*Bnorm[25, 25]/m
+    omega_c = np.abs(Q)*Bnorm[int((Y.size-1)/2), int((Z.size-1)/2)]/m
     # Cyclotron period
     Tc = 2.0*np.pi/omega_c
 
@@ -73,16 +72,40 @@ def main():
     particleTraj = np.empty((nparticles, 6, time.size))
     particleTraj.fill(np.nan)
 
-    temp = np.linspace(0, nparticles, nparticles)
-
     trapped_particles = 0
-    #angles = np.empty((nparticles, time.size))
+    theory_trapped_particles = 0
+
+    # Arrays used for field line tracing
+
+    nstep = 100
+    X_line = np.empty((nparticles, 101))
+    Y_line = np.empty((nparticles, 101))
+    Z_line = np.empty((nparticles, 101))
+
+    # Arrays to store angles
+
+    pitchangle = np.empty(nparticles)
+    lossconeAngle = np.empty(nparticles)
+
+
+    # Reconstruction of the velocity distribution
+    # fig, axs = plt.subplots(1)
+    # N, bins, patches = plt.hist(speeds, bins=100, density=True, alpha=0.5, histtype='bar', ec='black')
+    # plt.title('Reconstruction of the velocity distribution')
+    # plt.ylabel('Frequency')
+    # plt.xlabel('Velocity [$km/s$]')
+    # plt.tight_layout()
+    # plt.savefig('Reconstruction.eps')
+    # plt.show()
 
     for i in range(nparticles):
+        X_line[i,:], Y_line[i,:], Z_line[i,:], Bmax, Bmin = losscone.fieldline_tracing(X0[i], Y0[i], 0.0, dY, dY, dZ, nstep)
+        theoryTrapped, pitchangle[i], lossconeAngle[i] = losscone.particle_trapping(X_line[i,:], Y_line[i,:], Z_line[i,:], X0[i], Y0[i], vx[i], vy[i], vz[i], Bmax, Bmin)
         x0 = np.array([X0[i], Y0[i], Z0, vx[i], vy[i], vz[i]])
-        #isTrapped = losscone.trapping(Bmax, Bmin, vx[i], vy[i], vz[i])
         Traj, isTrapped = boris.boris_bunemann(time, x0, params, Ymin, Ymax, Zmin, Zmax, dY, dZ, Bx_grid, By_grid, Bz_grid, correction=True)
         trapped_particles += isTrapped
+        theory_trapped_particles += theoryTrapped
+
         for t in range(time.size):
             particleTraj[i, 0, t] = Traj[t,0] 
             particleTraj[i, 1, t] = Traj[t,1]
@@ -92,73 +115,67 @@ def main():
             particleTraj[i, 5, t] = Traj[t,5]
 
     print(trapped_particles, "particles are trapped")
-    # plt.figure(1, figsize=(9,9))
-    # ax = plt.subplot(211)
-    # XX,YY = np.meshgrid(X,Y)
-    # plt.contourf(XX,YY,Bnorm[:,:,4],50)
-    # plt.colorbar()
-    # plt.xlabel('X [m]')
-    # plt.ylabel('Y [m]')
-    # plt.title('B-field magnitude [T] - Simple Magnetic Mirror')
+    print(theory_trapped_particles, "particles are trapped (theory)")
 
-    # plt.figure(1)
-    # #x = plt.subplot(312)
-    # XX,YY = np.meshgrid(Z,Y)
-    # plt.streamplot(XX, YY, Bz_grid[:,:], By_grid[:,:])
-    # plt.xlabel('X [m]')
-    # plt.ylabel('Y [m]')
+    vperp = [0, np.max(np.sqrt(vx**2 + vy**2))]
+    vpar = [0, np.max(np.sqrt(vx**2 + vy**2))/np.tan(lossconeAngle[0])]
+
+    # fig, axs = plt.subplots(1)
+    # plt.scatter(abs(vz), np.sqrt(vx**2 + vy**2), s = 6)
+    # plt.plot(vpar, vperp, color='r', label='Loss cone')
+    # plt.title('Loss cone for 10,000 particles')
+    # plt.ylabel('$v_{\perp}$')
+    # plt.xlabel('$v_{\parallel}$')
+    # plt.legend()
+    # plt.tight_layout()
+    # plt.savefig('Losscone.eps')
     # plt.show()
-    # plt.title('B-field components - Simple Magnetic Mirror')
-
-    # plt.figure(1)
-    # ax = plt.subplot(212)
-    # XX,YY = np.meshgrid(Z, Y)
-    # ZY = plt.contourf(XX,YY,Bnorm[25,:,:],50)
-    # plt.colorbar()
-    # plt.xlabel('Z [m]')
-    # plt.ylabel('Y [m]')
-
-    # XX,YY = np.meshgrid(Y, Z)
-    # plt.contourf(np.transpose(XX),np.transpose(YY),Bnorm,50)
-    # plt.colorbar()
-    # plt.xlabel('Y [m]')
-    # plt.ylabel('Z [m]')
-    # #plt.title('B-field magnitude [T] - Simple Magnetic Mirror')
-
-    # plt.figure(1)
-    # plt.plot(temp, particleTraj[:,3,0], 'g-')
-    # plt.plot(temp, particleTraj[:,4,0], 'r-')
-    # plt.plot(temp, particleTraj[:,5,0], 'b-')
-    # plt.xlabel('Number of particles')
-    # plt.ylabel('Initial velocity')
-    # plt.title('Multiple particle test')
-    # plt.show()
-
-    plt.figure(1)
-    #XX,YY = np.meshgrid(Z,Y)
-    #plt.streamplot(XX, YY, Bz_grid[:,:], By_grid[:,:])
-    plt.plot(np.transpose(particleTraj[:,2,:]), np.transpose(particleTraj[:,1,:]) )
-    plt.axvline(x=-0.5, color='k', linewidth = 3)
-    plt.axvline(x=0.5, color='k', linewidth = 3)
-    plt.axhline(y=0.7, color='k', linewidth = 3)
-    plt.axhline(y=-0.7, color='k', linewidth = 3)
-    plt.xlabel('$z$')
-    plt.ylabel('$y$')
-    plt.title('Trajectory projection on $YZ$-plane')
-    plt.xlim(-1,1)
-    plt.ylim(-1,1)
-    #plt.savefig('boris_XZ.png')
 
     # plt.figure(2)
-    # plt.plot(particleTraj[0,2,:], particleTraj[0,1,:], 'r-')
-    # plt.plot(particleTraj[1,2,:], particleTraj[1,1,:], 'b-')
-    # plt.plot(particleTraj[2,2,:], particleTraj[2,1,:], 'g-')
+    # #plt.plot(np.transpose(Z_line), np.transpose(Y_line), 'r-')
+    # plt.axvline(x=-0.5, ymin=0.25, ymax= 0.75, color='k', linewidth = 2, label='Boundary')
+    # plt.plot(np.transpose(particleTraj[:,2,:]), np.transpose(particleTraj[:,1,:]), linewidth = 1 )
+    # #plt.axvline(x=-0.5, ymin=0.375, ymax= 0.625, color='b', linewidth = 4, label='Current loop')
+    # plt.axvline(x=0.5, ymin=0.25, ymax= 0.75, color='k', linewidth = 2)
+    # #plt.axvline(x=0.5, ymin=0.375, ymax= 0.625, color='b', linewidth = 4)
+    # plt.axhline(y=0.5, xmin=0.25, xmax=0.75,color='k', linewidth = 2)
+    # plt.axhline(y=-0.5,  xmin=0.25, xmax=0.75, color='k', linewidth = 2)
     # plt.xlabel('Z [m]')
     # plt.ylabel('Y [m]')
+    # plt.title('Boundaries for the loss criterion ($YZ$-plane)')
+    # plt.legend()
     # plt.xlim(-1,1)
     # plt.ylim(-1,1)
-    # plt.title('Multiple particle test')
-    plt.show()
+    # plt.savefig('10kparticles.png', dpi = 1200)
+    # plt.show()
+
+    # plt.figure(1)
+    # #XX,YY = np.meshgrid(Z,Y)
+    # #plt.streamplot(XX, YY, Bz_grid[:,:], By_grid[:,:])
+    # #plt.plot(np.transpose(Z_line), np.transpose(Y_line), 'r-')
+    # plt.plot(np.transpose(particleTraj[:,2,:]), np.transpose(particleTraj[:,1,:]), linewidth = 1 )
+    # plt.axvline(x=-0.5, ymin=0.375, ymax= 0.625, color='k', linewidth = 3, label='Current loop')
+    # plt.axvline(x=0.5, ymin=0.375, ymax= 0.625, color='k', linewidth = 3)
+    # plt.xlabel('Z [m]')
+    # plt.ylabel('Y [m]')
+    # plt.title('Trajectory projection on $YZ$-plane')
+    # plt.legend()
+    # plt.xlim(-1,1)
+    # plt.ylim(-1,1)
+    # plt.savefig('100_particles.eps')
+    # plt.show()
+
+    # ax = plt.subplot()
+    # ZZ, YY = np.meshgrid(Z,Y)
+    # plt.contourf(ZZ, YY, Bnorm, 50)
+    # plt.xlabel('Z [m]')
+    # plt.ylabel('Y [m]')
+    # plt.title('Magnetic field magnitude [T] on $YZ$-plane')
+    # plt.colorbar()
+    # plt.xlim(-1,1)
+    # plt.ylim(-1,1)
+    # plt.savefig("BFieldMag.eps")
+    # plt.show()
 
 if __name__ == '__main__':
    main()
