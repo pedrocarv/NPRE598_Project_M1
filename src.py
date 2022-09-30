@@ -59,7 +59,7 @@ def main():
         Y0[i] = r_rand[i]*np.sin(p_rand[i])
 
     Nperiods = 100
-    Nsteps_per_period = 100
+    Nsteps_per_period = 50
     # Cyclotron frequency [rad/s]
     omega_c = np.abs(Q)*Bnorm[int((Y.size-1)/2), int((Z.size-1)/2)]/m
     # Cyclotron period
@@ -87,6 +87,11 @@ def main():
     pitchangle = np.empty(nparticles)
     lossconeAngle = np.empty(nparticles)
 
+    # index of the particles that were lost
+
+    index_lost_cone = []
+    index_lost_geo = []
+
 
     # Reconstruction of the velocity distribution
     # fig, axs = plt.subplots(1)
@@ -99,12 +104,22 @@ def main():
     # plt.show()
 
     for i in range(nparticles):
+
         X_line[i,:], Y_line[i,:], Z_line[i,:], Bmax, Bmin = losscone.fieldline_tracing(X0[i], Y0[i], 0.0, dY, dY, dZ, nstep)
         theoryTrapped, pitchangle[i], lossconeAngle[i] = losscone.particle_trapping(X_line[i,:], Y_line[i,:], Z_line[i,:], X0[i], Y0[i], vx[i], vy[i], vz[i], Bmax, Bmin)
+
         x0 = np.array([X0[i], Y0[i], Z0, vx[i], vy[i], vz[i]])
         Traj, isTrapped = boris.boris_bunemann(time, x0, params, Ymin, Ymax, Zmin, Zmax, dY, dZ, Bx_grid, By_grid, Bz_grid, correction=True)
-        trapped_particles += isTrapped
-        theory_trapped_particles += theoryTrapped
+
+        if isTrapped == 1:
+            trapped_particles += isTrapped
+        else:
+            index_lost_geo.append(i)
+
+        if theoryTrapped == 1:
+            theory_trapped_particles += theoryTrapped
+        else:
+            index_lost_cone.append(i)
 
         for t in range(time.size):
             particleTraj[i, 0, t] = Traj[t,0] 
@@ -119,6 +134,38 @@ def main():
 
     vperp = [0, np.max(np.sqrt(vx**2 + vy**2))]
     vpar = [0, np.max(np.sqrt(vx**2 + vy**2))/np.tan(lossconeAngle[0])]
+
+    modified_cone = particleTraj.copy()
+    modified_cone_geo = particleTraj.copy()
+
+    for i in index_lost_cone:
+        modified_cone[i, :, :] = np.nan
+
+    for i in index_lost_geo:
+        modified_cone_geo[i, :, :] = np.nan
+
+            
+    # plt.figure(1)
+    # plt.scatter(modified_cone[:,5,0], np.sqrt(modified_cone[:,3,0]**2 + modified_cone[:,4,0]**2), s = 6)
+    # #plt.plot(vpar, vperp, color='r', label='Loss cone')
+    # plt.title('Loss cone for 10,000 particles')
+    # plt.ylabel('$v_{\perp}$')
+    # plt.xlabel('$v_{\parallel}$')
+    # # plt.legend()
+    # plt.tight_layout()
+    # plt.savefig('Losscone_cone.png', dpi = 600)
+    # plt.show()
+
+    # plt.figure(2)
+    # plt.scatter(modified_cone_geo[:,5,0], np.sqrt(modified_cone_geo[:,3,0]**2 + modified_cone_geo[:,4,0]**2), s = 6)
+    # #plt.plot(vpar, vperp, color='r', label='Loss cone')
+    # plt.title('Derived loss cone for 10,000 particles')
+    # plt.ylabel('$v_{\perp}$')
+    # plt.xlabel('$v_{\parallel}$')
+    # # plt.legend()
+    # plt.tight_layout()
+    # plt.savefig('Losscone_geo.png', dpi = 600)
+    # plt.show()
 
     # fig, axs = plt.subplots(1)
     # plt.scatter(abs(vz), np.sqrt(vx**2 + vy**2), s = 6)
@@ -165,7 +212,7 @@ def main():
     # plt.savefig('100_particles.eps')
     # plt.show()
 
-    # ax = plt.subplot()
+    # plt.figure(1)
     # ZZ, YY = np.meshgrid(Z,Y)
     # plt.contourf(ZZ, YY, Bnorm, 50)
     # plt.xlabel('Z [m]')
@@ -174,7 +221,25 @@ def main():
     # plt.colorbar()
     # plt.xlim(-1,1)
     # plt.ylim(-1,1)
-    # plt.savefig("BFieldMag.eps")
+    # plt.savefig("BFieldMag.png", dpi = 600)
+    # plt.show()
+
+    # Bnorm_interp  = np.zeros((Y.size, Z.size))
+    # for j in range(0,Y.size):
+    #     for k in range(0,Z.size):
+    #             Bx, By, Bz = mirror.Bfield_interpolator(Y[j], Z[k], Ymin, Ymax, Zmin, Zmax, dY, dZ, Bx_grid, By_grid, Bz_grid)
+    #             Bnorm_interp[j,k]   = np.sqrt( Bx*Bx + By*By + Bz*Bz )
+
+    # plt.figure(2)
+    # ZZ, YY = np.meshgrid(Z,Y)
+    # plt.contourf(ZZ, YY, Bnorm_interp, 50)
+    # plt.xlabel('Z [m]')
+    # plt.ylabel('Y [m]')
+    # plt.title('Interpolated Magnetic field magnitude [T] on $YZ$-plane')
+    # plt.colorbar()
+    # plt.xlim(-1,1)
+    # plt.ylim(-1,1)
+    # plt.savefig("BFieldMag_interp.png", dpi = 600)
     # plt.show()
 
 if __name__ == '__main__':
